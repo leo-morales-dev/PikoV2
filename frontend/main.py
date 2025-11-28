@@ -3,13 +3,14 @@ import json
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import os
 
 import flet as ft
 import httpx # CAMBIO: Librería asíncrona
 
 # --- Configuración y Colores ---
 # CAMBIA ESTO POR TU URL REAL (Render/Ngrok) CUANDO SUBAS A NETLIFY
-API_URL = "https://api.render.com/deploy/srv-d4j95jf5r7bs73f8ppm0?key=MbXF9R6EJD4/api"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 POLL_SECONDS = 3
 PENDING_KEY = "piko_offline_pedidos"
