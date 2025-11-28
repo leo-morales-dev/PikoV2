@@ -1,0 +1,7 @@
+flet
+fastapi
+uvicorn
+httpx
+requests
+plyer
+pydantic    
