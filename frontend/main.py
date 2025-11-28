@@ -10,8 +10,10 @@ import httpx  # CAMBIO: Librería asíncrona
 
 # --- Configuración y Colores ---
 # CAMBIA ESTO POR TU URL REAL (Render/Ngrok) CUANDO SUBAS A NETLIFY / RENDER
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-API_URL = API_BASE_URL  # <- ALIAS IMPORTANTE PARA TODO EL CÓDIGO
+API_BASE_URL = os.getenv("API_BASE_URL", "https://piko-backend-jo6r.onrender.com")
+# TODOS los endpoints del backend están bajo /api
+API_URL = API_BASE_URL.rstrip("/") + "/api"
+
 
 print(f"[Piko] Usando API_URL = {API_URL}")
 
