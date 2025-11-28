@@ -11,20 +11,23 @@ import httpx  # CAMBIO: Librería asíncrona
 # --- Configuración y Colores ---
 # CAMBIA ESTO POR TU URL REAL (Render/Ngrok) CUANDO SUBAS A NETLIFY / RENDER
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_URL = API_BASE_URL  # <- ALIAS IMPORTANTE PARA TODO EL CÓDIGO
+
+print(f"[Piko] Usando API_URL = {API_URL}")
 
 POLL_SECONDS = 3
 PENDING_KEY = "piko_offline_pedidos"
 
-BG = "#0b0f14"
-PANEL = "#111827"
-BORDER = "#1f2937"
-BOX = "#0f172a"
-MUTED = "#9aa3af"
-BADGE = "#1f2937"
+BG      = "#0b0f14"
+PANEL   = "#111827"
+BORDER  = "#1f2937"
+BOX     = "#0f172a"
+MUTED   = "#9aa3af"
+BADGE   = "#1f2937"
 BLUE600 = "#2563eb"
 BLUE700 = "#1d4ed8"
-GREEN = "#16a34a"
-WHITE = "#ffffff"
+GREEN   = "#16a34a"
+WHITE   = "#ffffff"
 
 MODE_CHOICES = {
     "comer_aqui": {
@@ -55,7 +58,6 @@ def adaptive_padding(page: ft.Page, base: int = 20) -> int:
         return max(12, int(base * 0.8))
     return base
 
-
 def adaptive_text_size(page: ft.Page, base: int) -> int:
     try:
         width = page.window_width or page.width or 0
@@ -67,19 +69,17 @@ def adaptive_text_size(page: ft.Page, base: int) -> int:
         return max(13, int(base * 0.92))
     return base
 
-
 def button_padding(page: ft.Page, *, h: int = 14, v: int = 12) -> ft.PaddingValue:
     return ft.padding.symmetric(
-        horizontal=adaptive_padding(page, h), vertical=adaptive_padding(page, v)
+        horizontal=adaptive_padding(page, h),
+        vertical=adaptive_padding(page, v),
     )
-
 
 def money(n) -> str:
     try:
         return f"${float(n or 0):.2f}"
     except:
         return "$0.00"
-
 
 def tag_chip(text: str, color: str = "#374151"):
     return ft.Container(
@@ -88,7 +88,6 @@ def tag_chip(text: str, color: str = "#374151"):
         padding=ft.padding.symmetric(5, 10),
         border_radius=999,
     )
-
 
 def card_container(
     content: ft.Control,
@@ -107,7 +106,6 @@ def card_container(
         content=content,
     )
 
-
 def box_container(content: ft.Control, pad: int = 14):
     return ft.Container(
         bgcolor=BOX,
@@ -116,7 +114,6 @@ def box_container(content: ft.Control, pad: int = 14):
         padding=pad,
         content=content,
     )
-
 
 def state_color(estado: str) -> str:
     e = (estado or "").lower()
@@ -130,15 +127,19 @@ def state_color(estado: str) -> str:
         return "#059669"
     return "#374151"
 
-
 def mode_meta(value: Optional[str]) -> dict:
     key = (value or "").strip().lower()
     if "llevar" in key:
         return MODE_CHOICES["para_llevar"]
     if "aqui" in key or "aquí" in key:
         return MODE_CHOICES["comer_aqui"]
-    return {"label": "", "tag": "", "desc": "", "color": "#374151", "icon": "info"}
-
+    return {
+        "label": "",
+        "tag": "",
+        "desc": "",
+        "color": "#374151",
+        "icon": "info",
+    }
 
 def pill(text: str) -> ft.Container:
     return ft.Container(
@@ -147,7 +148,6 @@ def pill(text: str) -> ft.Container:
         padding=ft.padding.symmetric(5, 10),
         border_radius=999,
     )
-
 
 def top_bar(
     page: ft.Page,
@@ -163,17 +163,14 @@ def top_bar(
         size=adaptive_text_size(page, 24 if is_piko else 20),
         weight=ft.FontWeight.W_900 if is_piko else ft.FontWeight.W_700,
     )
-
     left = [title_ctrl]
     if badge:
         left.append(badge)
-
     nav = (
         ft.Row(spacing=12, controls=nav_controls, alignment="center")
         if nav_controls
         else ft.Container()
     )
-
     status = ft.Row(
         spacing=6,
         vertical_alignment="center",
@@ -187,7 +184,6 @@ def top_bar(
             ),
         ],
     )
-
     return ft.Container(
         padding=ft.padding.only(bottom=pad),
         content=ft.ResponsiveRow(
@@ -218,7 +214,6 @@ def top_bar(
         ),
     )
 
-
 class AppState:
     def __init__(self):
         self.modo = None
@@ -236,14 +231,12 @@ class AppState:
     def clear_cart(self):
         self.carrito.clear()
 
-
 state = AppState()
 
 # --------------------- LÓGICA OFFLINE/SYNC (HTTPX) --------------------- #
 async def sync_offline_orders(page: ft.Page):
     PENDING_KEY = "piko_offline_pedidos"
     print("--- 📡 Servicio de Sincronización Iniciado ---")
-
     while True:
         try:
             pending_json = await page.client_storage.get_async(PENDING_KEY)
@@ -258,33 +251,36 @@ async def sync_offline_orders(page: ft.Page):
                     for order in pending_orders:
                         try:
                             r = await client.post(
-                                f"{API_BASE_URL}/pedidos",
+                                f"{API_URL}/pedidos",
                                 json=order,
                                 timeout=5,
                             )
                             if r.status_code == 200:
                                 synced_count += 1
-                                print(f"✅ Pedido sincronizado: {order.get('modo')}")
+                                print(
+                                    f"✅ Pedido sincronizado: {order.get('modo')}"
+                                )
                                 page.snack_bar = ft.SnackBar(
-                                    ft.Text("¡Conexión recuperada! Pedido subido."),
+                                    ft.Text(
+                                        "¡Conexión recuperada! Pedido subido."
+                                    ),
                                     bgcolor=GREEN,
                                 )
                                 page.snack_bar.open = True
                                 page.update()
                             else:
                                 still_pending.append(order)
-                        except:
+                        except Exception as e:
+                            print("Error al sincronizar pedido:", e)
                             still_pending.append(order)
 
                 if synced_count > 0:
                     await page.client_storage.set_async(
                         PENDING_KEY, json.dumps(still_pending)
                     )
-        except:
-            pass
-
+        except Exception as e:
+            print("Error en sync_offline_orders:", e)
         await asyncio.sleep(5)
-
 
 async def save_order_offline(page: ft.Page, payload):
     PENDING_KEY = "piko_offline_pedidos"
@@ -293,20 +289,21 @@ async def save_order_offline(page: ft.Page, payload):
         current_list = json.loads(existing_json) if existing_json else []
         payload["modo"] = f"{payload['modo']} (OFFLINE)"
         current_list.append(payload)
-        await page.client_storage.set_async(PENDING_KEY, json.dumps(current_list))
+        await page.client_storage.set_async(
+            PENDING_KEY, json.dumps(current_list)
+        )
         return True
     except Exception as e:
         print(f"Error guardando offline: {e}")
         return False
 
-
 # --------------------- VISTAS (TU DISEÑO EXACTO) --------------------- #
+
 def StartView(page: ft.Page):
     page.appbar = None
     page.scroll = None
     page.vertical_alignment = "center"
     page.horizontal_alignment = "center"
-
     pad = adaptive_padding(page)
 
     def sel(k):
@@ -334,7 +331,6 @@ def StartView(page: ft.Page):
     )
 
     cards = []
-
     for k, i in MODE_CHOICES.items():
         btn = ft.FilledButton(
             "Elegir",
@@ -347,7 +343,6 @@ def StartView(page: ft.Page):
             ),
             on_click=lambda e, _k=k: sel(_k),
         )
-
         cards.append(
             ft.Container(
                 ft.Container(
@@ -361,7 +356,11 @@ def StartView(page: ft.Page):
                         alignment="spaceBetween",
                         horizontal_alignment="center",
                         controls=[
-                            ft.Icon(i["icon"], size=48, color=i["color"]),
+                            ft.Icon(
+                                i["icon"],
+                                size=48,
+                                color=i["color"],
+                            ),
                             ft.Text(
                                 i["label"],
                                 size=adaptive_text_size(page, 20),
@@ -419,12 +418,10 @@ def StartView(page: ft.Page):
         )
     )
 
-
 def MenuView(page: ft.Page):
     page.appbar = None
     page.vertical_alignment = "start"
     page.horizontal_alignment = "start"
-
     if not state.modo:
         page.go("/")
         return
@@ -436,13 +433,19 @@ def MenuView(page: ft.Page):
         page,
         "Piko",
         nav_controls=[
-            ft.TextButton("Pantalla de pedidos", on_click=lambda e: page.go("/pantalla")),
-            ft.TextButton("Panel del barista", on_click=lambda e: page.go("/barista")),
+            ft.TextButton(
+                "Pantalla de pedidos", on_click=lambda e: page.go("/pantalla")
+            ),
+            ft.TextButton(
+                "Panel del barista", on_click=lambda e: page.go("/barista")
+            ),
         ],
     )
 
     cart_col = ft.Column(spacing=10)
-    menu_grid = ft.ResponsiveRow(run_spacing=15, spacing=15, alignment="center")
+    menu_grid = ft.ResponsiveRow(
+        run_spacing=15, spacing=15, alignment="center"
+    )
     menu_col = ft.Column([menu_grid], horizontal_alignment="center")
     total_text = ft.Text("$0.00", size=24, weight="bold")
 
@@ -459,26 +462,28 @@ def MenuView(page: ft.Page):
                     state.carrito.remove(item)
                 found = True
                 break
-
         if not found and delta > 0 and p_data:
             state.carrito.append({"product": p_data, "quantity": 1})
-
         render_cart()
         update_total()
 
     def delete_grp(pid):
-        state.carrito = [i for i in state.carrito if i["product"]["id"] != pid]
+        state.carrito = [
+            i for i in state.carrito if i["product"]["id"] != pid
+        ]
         render_cart()
         update_total()
 
     def render_cart():
         cart_col.controls.clear()
-
         if not state.carrito:
             cart_col.controls.append(
                 ft.Container(
                     content=ft.Column(
-                        [ft.Icon("shopping_bag", color=MUTED), ft.Text("Agrega productos", color=MUTED)],
+                        [
+                            ft.Icon("shopping_bag", color=MUTED),
+                            ft.Text("Agrega productos", color=MUTED),
+                        ],
                         alignment="center",
                         horizontal_alignment="center",
                     ),
@@ -522,13 +527,15 @@ def MenuView(page: ft.Page):
                                             icon="remove_circle_outline",
                                             icon_color=MUTED,
                                             icon_size=20,
-                                            on_click=lambda e, pid=p["id"]: change_qty(
-                                                pid, -1
-                                            ),
+                                            on_click=lambda e, pid=p[
+                                                "id"
+                                            ]: change_qty(pid, -1),
                                         ),
                                         ft.Container(
                                             content=ft.Text(
-                                                str(q), weight="bold", size=14
+                                                str(q),
+                                                weight="bold",
+                                                size=14,
                                             ),
                                             padding=ft.padding.symmetric(
                                                 horizontal=8
@@ -538,18 +545,18 @@ def MenuView(page: ft.Page):
                                             icon="add_circle_outline",
                                             icon_color=BLUE600,
                                             icon_size=20,
-                                            on_click=lambda e, pid=p["id"]: change_qty(
-                                                pid, 1
-                                            ),
+                                            on_click=lambda e, pid=p[
+                                                "id"
+                                            ]: change_qty(pid, 1),
                                         ),
                                         ft.Container(width=5),
                                         ft.IconButton(
                                             icon="delete_outline",
                                             icon_color="#ef4444",
                                             icon_size=22,
-                                            on_click=lambda e, pid=p["id"]: delete_grp(
-                                                pid
-                                            ),
+                                            on_click=lambda e, pid=p[
+                                                "id"
+                                            ]: delete_grp(pid),
                                         ),
                                     ],
                                 ),
@@ -558,15 +565,16 @@ def MenuView(page: ft.Page):
                         pad=10,
                     )
                 )
-
         page.update()
 
     def render_menu():
+        print("[Piko] Cargando menú en UI...")
         menu_grid.controls.clear()
         sections = {}
-
         for p in state.menu:
-            sections.setdefault((p.get("seccion") or "Otros").title(), []).append(p)
+            sections.setdefault(
+                (p.get("seccion") or "Otros").title(), []
+            ).append(p)
 
         for sec, prods in sorted(sections.items()):
             menu_grid.controls.append(
@@ -576,7 +584,6 @@ def MenuView(page: ft.Page):
                     padding=ft.padding.only(top=10, bottom=5),
                 )
             )
-
             for p in prods:
                 menu_grid.controls.append(
                     ft.Container(
@@ -595,14 +602,17 @@ def MenuView(page: ft.Page):
                                                 expand=True,
                                             ),
                                             tag_chip(
-                                                p.get("seccion", ""), "#1f2937"
+                                                p.get("seccion", ""),
+                                                "#1f2937",
                                             ),
                                         ],
                                         alignment="spaceBetween",
                                         vertical_alignment="start",
                                     ),
                                     ft.Text(
-                                        money(p["precio"]), weight="bold", size=16
+                                        money(p["precio"]),
+                                        weight="bold",
+                                        size=16,
                                     ),
                                     ft.Row(
                                         [
@@ -619,12 +629,16 @@ def MenuView(page: ft.Page):
                                                     setattr(
                                                         dlg_info.title,
                                                         "value",
-                                                        e.control.data["nombre"],
+                                                        e.control.data[
+                                                            "nombre"
+                                                        ],
                                                     ),
                                                     setattr(
                                                         dlg_info.content,
                                                         "value",
-                                                        e.control.data["descripcion"],
+                                                        e.control.data[
+                                                            "descripcion"
+                                                        ],
                                                     ),
                                                     page.open(dlg_info),
                                                 ),
@@ -651,7 +665,6 @@ def MenuView(page: ft.Page):
                         col={"xs": 12, "sm": 6, "md": 6, "lg": 4, "xl": 3},
                     )
                 )
-
         page.update()
 
     dlg_info = ft.AlertDialog(
@@ -659,10 +672,7 @@ def MenuView(page: ft.Page):
         title=ft.Text(""),
         content=ft.Text(""),
         actions=[
-            ft.TextButton(
-                "Cerrar",
-                on_click=lambda e: page.close(dlg_info),
-            )
+            ft.TextButton("Cerrar", on_click=lambda e: page.close(dlg_info))
         ],
     )
 
@@ -674,7 +684,11 @@ def MenuView(page: ft.Page):
                         [
                             ft.Column(
                                 [
-                                    ft.Text("Menú", size=24, weight="bold"),
+                                    ft.Text(
+                                        "Menú",
+                                        size=24,
+                                        weight="bold",
+                                    ),
                                     ft.Text(
                                         f"{current_mode['label']}",
                                         color=MUTED,
@@ -713,7 +727,10 @@ def MenuView(page: ft.Page):
                 cart_col,
                 ft.Divider(color=BORDER),
                 ft.Row(
-                    [ft.Text("Total", size=16), total_text],
+                    [
+                        ft.Text("Total", size=16),
+                        total_text,
+                    ],
                     alignment="spaceBetween",
                 ),
                 ft.FilledButton(
@@ -743,8 +760,14 @@ def MenuView(page: ft.Page):
 
     layout = ft.ResponsiveRow(
         controls=[
-            ft.Container(left_p, col={"xs": 12, "md": 7, "lg": 8}),
-            ft.Container(right_p, col={"xs": 12, "md": 5, "lg": 4}),
+            ft.Container(
+                left_p,
+                col={"xs": 12, "md": 7, "lg": 8},
+            ),
+            ft.Container(
+                right_p,
+                col={"xs": 12, "md": 5, "lg": 4},
+            ),
         ],
         spacing=20,
         run_spacing=20,
@@ -778,11 +801,14 @@ def MenuView(page: ft.Page):
     # CAMBIO: Carga asíncrona del menú
     async def init_menu():
         try:
+            print(f"[Piko] GET {API_URL}/menu")
             async with httpx.AsyncClient(trust_env=False) as client:
-                r = await client.get(f"{API_BASE_URL}/menu", timeout=5)
+                r = await client.get(f"{API_URL}/menu", timeout=5)
+                print("[Piko] Respuesta menú:", r.status_code)
                 state.menu = r.json()
                 render_menu()
-        except:
+        except Exception as e:
+            print("Error cargando menú:", e)
             menu_grid.controls.append(
                 ft.Text("Cargando o sin conexión...", color=MUTED)
             )
@@ -793,13 +819,11 @@ def MenuView(page: ft.Page):
     update_total()
     responsive_update()
 
-
-# --- VISTA: CHECKOUT (Tu diseño original) ---
+# --- VISTA: CHECKOUT ---
 def CheckoutView(page: ft.Page):
     page.appbar = None
     page.scroll = ft.ScrollMode.AUTO
     pad = adaptive_padding(page)
-
     if not state.carrito:
         page.go("/menu")
         return
@@ -808,7 +832,6 @@ def CheckoutView(page: ft.Page):
     current_mode = mode_meta(state.modo)
 
     lista_items = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
-
     for item in state.carrito:
         p = item["product"]
         q = item["quantity"]
@@ -843,28 +866,6 @@ def CheckoutView(page: ft.Page):
         width=500,
     )
 
-    def show_success():
-        main_card.content = ft.Column(
-            [
-                ft.Icon("check_circle", color=GREEN, size=120),
-                ft.Text(
-                    "¡Pedido Exitoso!",
-                    size=30,
-                    weight="bold",
-                    color=GREEN,
-                ),
-                ft.Text("Enviado a cocina.", color=MUTED, size=16),
-                ft.Text("Redirigiendo...", color=MUTED, italic=True),
-            ],
-            alignment="center",
-            horizontal_alignment="center",
-            spacing=20,
-        )
-        page.update()
-        time.sleep(2.5)
-        state.clear_cart()
-        page.go("/")
-
     def ir_inicio(dialogo):
         page.close(dialogo)
         state.clear_cart()
@@ -898,13 +899,10 @@ def CheckoutView(page: ft.Page):
         }
 
         try:
-            print("Intentando enviar...")
-            # CAMBIO: HTTPX POST
+            print("[Piko] Intentando enviar pedido...")
             async with httpx.AsyncClient(trust_env=False) as client:
                 r = await client.post(
-                    f"{API_BASE_URL}/pedidos",
-                    json=payload,
-                    timeout=2,
+                    f"{API_URL}/pedidos", json=payload, timeout=2
                 )
                 page.close(loading)
                 if r.status_code == 200:
@@ -915,7 +913,9 @@ def CheckoutView(page: ft.Page):
                             color=GREEN,
                             text_align="center",
                         ),
-                        content=ft.Icon("check_circle", color=GREEN, size=60),
+                        content=ft.Icon(
+                            "check_circle", color=GREEN, size=60
+                        ),
                         actions=[
                             ft.TextButton(
                                 "Aceptar",
@@ -926,7 +926,9 @@ def CheckoutView(page: ft.Page):
                     page.open(dlg_success)
                     page.update()
                 else:
-                    raise Exception("Error del servidor")
+                    raise Exception(
+                        f"Error del servidor: {r.status_code}"
+                    )
 
         except Exception as e:
             print(f"⚠️ Guardando localmente: {e}")
@@ -943,7 +945,11 @@ def CheckoutView(page: ft.Page):
                         ),
                         content=ft.Column(
                             [
-                                ft.Icon("wifi_off", color="orange", size=50),
+                                ft.Icon(
+                                    "wifi_off",
+                                    color="orange",
+                                    size=50,
+                                ),
                                 ft.Text(
                                     "Pedido guardado en el dispositivo.",
                                     text_align="center",
@@ -976,10 +982,10 @@ def CheckoutView(page: ft.Page):
                     )
                     page.snack_bar.open = True
                     page.update()
-            except:
-                pass
+            except Exception as e2:
+                print("Error crítico al guardar offline:", e2)
 
-    # CAMBIO: Botón llama a run_task
+    # Botones de pago usando run_task
     def btn_pago(txt, icon, col, metodo_clave):
         return ft.Container(
             bgcolor=PANEL,
@@ -1066,8 +1072,7 @@ def CheckoutView(page: ft.Page):
         )
     )
 
-
-# --- VISTA: BARISTA (Tu diseño exacto de Parte 2) ---
+# --- VISTA: BARISTA ---
 def BaristaView(page: ft.Page):
     page.appbar = None
     page.scroll = ft.ScrollMode.AUTO
@@ -1092,17 +1097,28 @@ def BaristaView(page: ft.Page):
                 return
             except:
                 pass
-
         try:
             page.run_js(
-                f"""new Notification("{titulo}", {{ body: "{mensaje}", icon: "/icons/icon-192.png" }});"""
+                f"""
+            if (Notification.permission !== "granted") {{
+                Notification.requestPermission();
+            }}
+            new Notification("{titulo}", {{
+                body: "{mensaje}",
+                icon: "/icons/icon-192.png"
+            }});
+            """
             )
         except:
             pass
 
     try:
         page.run_js(
-            """if (Notification.permission !== "granted") { Notification.requestPermission(); }"""
+            """
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+        """
         )
     except:
         pass
@@ -1113,12 +1129,25 @@ def BaristaView(page: ft.Page):
         "Panel del barista",
         nav_controls=[ft.TextButton("Menú", on_click=lambda e: page.go("/menu"))],
     )
-
     target_pid = [None]
 
-    def confirmar_listo(e):
-        if target_pid[0]:
-            page.run_task(do_confirm, target_pid[0])
+    async def update_est(pid, est):
+        try:
+            async with httpx.AsyncClient(trust_env=False) as client:
+                r = await client.put(
+                    f"{API_URL}/pedidos/{pid}/estado",
+                    json={"estado": est},
+                    timeout=5,
+                )
+                if r.status_code == 200:
+                    for p in state.pedidos:
+                        if p["id"] == pid:
+                            p["estado"] = est
+                    render()
+                    return True
+        except Exception as e:
+            print("Error actualizando estado:", e)
+        return False
 
     async def do_confirm(pid):
         exito = await update_est(pid, "listo")
@@ -1133,6 +1162,10 @@ def BaristaView(page: ft.Page):
             page.snack_bar.open = True
             page.close(dlg_confirm)
             page.update()
+
+    def confirmar_listo(e):
+        if target_pid[0]:
+            page.run_task(do_confirm, target_pid[0])
 
     dlg_confirm = ft.AlertDialog(
         modal=True,
@@ -1157,24 +1190,6 @@ def BaristaView(page: ft.Page):
         target_pid[0] = pid
         page.open(dlg_confirm)
 
-    async def update_est(pid, est):
-        try:
-            async with httpx.AsyncClient(trust_env=False) as client:
-                r = await client.put(
-                    f"{API_BASE_URL}/pedidos/{pid}/estado",
-                    json={"estado": est},
-                    timeout=5,
-                )
-                if r.status_code == 200:
-                    for p in state.pedidos:
-                        if p["id"] == pid:
-                            p["estado"] = est
-                    render()
-                    return True
-        except:
-            pass
-        return False
-
     def get_action_buttons(pid, estado, is_mobile=False):
         est = (estado or "pendiente").lower()
         btn_height = 45 if is_mobile else 35
@@ -1195,7 +1210,9 @@ def BaristaView(page: ft.Page):
         )
 
         btn_listo = ft.Container(
-            content=ft.Text("Listo", size=12, weight="bold", color=WHITE),
+            content=ft.Text(
+                "Listo", size=12, weight="bold", color=WHITE
+            ),
             bgcolor=GREEN if est == "preparando" else "#064e3b",
             padding=ft.padding.symmetric(8, 12),
             border_radius=6,
@@ -1214,7 +1231,12 @@ def BaristaView(page: ft.Page):
                 content=ft.Row(
                     [
                         ft.Icon("check_circle", color=GREEN, size=16),
-                        ft.Text("Notificado", color=GREEN, weight="bold", size=12),
+                        ft.Text(
+                            "Notificado",
+                            color=GREEN,
+                            weight="bold",
+                            size=12,
+                        ),
                     ],
                     alignment="center",
                 ),
@@ -1226,14 +1248,11 @@ def BaristaView(page: ft.Page):
             )
 
         return ft.Row(
-            [btn_prep, btn_listo],
-            spacing=10,
-            expand=is_mobile,
+            [btn_prep, btn_listo], spacing=10, expand=is_mobile
         )
 
     def render():
         orders_column.controls.clear()
-
         try:
             filtrados = [
                 p for p in state.pedidos if p.get("estado") != "confirmado"
@@ -1247,7 +1266,9 @@ def BaristaView(page: ft.Page):
             header_row = ft.Container(
                 bgcolor=TABLE_HEADER_BG,
                 padding=ft.padding.all(15),
-                border_radius=ft.border_radius.only(top_left=10, top_right=10),
+                border_radius=ft.border_radius.only(
+                    top_left=10, top_right=10
+                ),
                 content=ft.Row(
                     [
                         ft.Text(
@@ -1426,7 +1447,11 @@ def BaristaView(page: ft.Page):
 
     main_container = ft.Container(
         bgcolor=BG if page.width < 650 else ROW_BG,
-        border=ft.border.all(1, "#374151") if page.width > 650 else None,
+        border=(
+            ft.border.all(1, "#374151")
+            if page.width > 650
+            else None
+        ),
         border_radius=12,
         padding=0,
         content=ft.Column(
@@ -1464,8 +1489,7 @@ def BaristaView(page: ft.Page):
             controls=[
                 ft.Container(
                     content=ft.Column(
-                        [header, main_container],
-                        spacing=10,
+                        [header, main_container], spacing=10
                     ),
                     padding=pad,
                     expand=True,
@@ -1481,39 +1505,39 @@ def BaristaView(page: ft.Page):
         while control_flag[0]:
             try:
                 async with httpx.AsyncClient(trust_env=False) as client:
-                    r = await client.get(f"{API_BASE_URL}/pedidos", timeout=5)
+                    r = await client.get(f"{API_URL}/pedidos", timeout=5)
                     if r.status_code == 200:
                         state.pedidos = r.json()
                         render()
-            except:
-                pass
-
+            except Exception as e:
+                print("Error poll barista:", e)
             try:
                 await asyncio.sleep(POLL_SECONDS)
             except:
                 control_flag[0] = False
 
-    poll_task = page.run_task(poll)
+    page.run_task(poll)
     page.views[-1].on_dispose = lambda e: control_flag.__setitem__(0, False)
 
-
-# --- VISTA: PANTALLA (Tu diseño exacto de Parte 2) ---
+# --- VISTA: PANTALLA ---
 def PantallaView(page: ft.Page):
     page.appbar = None
     page.scroll = ft.ScrollMode.AUTO
     pad = adaptive_padding(page)
 
     COL_HEADER_BG, ROW_BG = "#1f2937", "#111827"
-
     col_p = ft.Column(spacing=10, expand=False)
     col_l = ft.Column(spacing=10, expand=False)
 
     def render():
         col_p.controls.clear()
         col_l.controls.clear()
-
         try:
-            pp = [p for p in state.pedidos if p.get("estado") == "preparando"]
+            pp = [
+                p
+                for p in state.pedidos
+                if p.get("estado") == "preparando"
+            ]
             pl = [p for p in state.pedidos if p.get("estado") == "listo"]
         except:
             pp = []
@@ -1522,11 +1546,14 @@ def PantallaView(page: ft.Page):
         if not pp:
             col_p.controls.append(
                 ft.Container(
-                    ft.Text("Todo tranquilo...", color=MUTED, italic=True),
+                    ft.Text(
+                        "Todo tranquilo...",
+                        color=MUTED,
+                        italic=True,
+                    ),
                     padding=20,
                 )
             )
-
         for p in sorted(pp, key=lambda x: x["id"]):
             col_p.controls.append(
                 ft.Container(
@@ -1575,7 +1602,6 @@ def PantallaView(page: ft.Page):
                     padding=20,
                 )
             )
-
         for p in sorted(pl, key=lambda x: x["id"]):
             col_l.controls.append(
                 ft.Container(
@@ -1601,7 +1627,9 @@ def PantallaView(page: ft.Page):
                                         weight="bold",
                                         size=16,
                                     ),
-                                    ft.Icon("check_circle", color=GREEN),
+                                    ft.Icon(
+                                        "check_circle", color=GREEN
+                                    ),
                                 ],
                                 spacing=5,
                             ),
@@ -1610,7 +1638,6 @@ def PantallaView(page: ft.Page):
                     ),
                 )
             )
-
         page.update()
 
     grid = ft.ResponsiveRow(
@@ -1628,7 +1655,9 @@ def PantallaView(page: ft.Page):
                             border_radius=8,
                             content=ft.Row(
                                 [
-                                    ft.Icon("timelapse", color=BLUE600),
+                                    ft.Icon(
+                                        "timelapse", color=BLUE600
+                                    ),
                                     ft.Text(
                                         "PREPARANDO",
                                         size=20,
@@ -1658,7 +1687,9 @@ def PantallaView(page: ft.Page):
                             border_radius=8,
                             content=ft.Row(
                                 [
-                                    ft.Icon("check_circle", color=GREEN),
+                                    ft.Icon(
+                                        "check_circle", color=GREEN
+                                    ),
                                     ft.Text(
                                         "LISTOS PARA RECOGER",
                                         size=20,
@@ -1682,8 +1713,12 @@ def PantallaView(page: ft.Page):
 
     header_nav = ft.Row(
         [
-            ft.Text("Monitor de Pedidos", size=14, color=MUTED),
-            ft.TextButton("Menú", on_click=lambda e: page.go("/menu")),
+            ft.Text(
+                "Monitor de Pedidos", size=14, color=MUTED
+            ),
+            ft.TextButton(
+                "Menú", on_click=lambda e: page.go("/menu")
+            ),
         ],
         alignment="spaceBetween",
     )
@@ -1712,21 +1747,19 @@ def PantallaView(page: ft.Page):
         while control_flag[0]:
             try:
                 async with httpx.AsyncClient(trust_env=False) as client:
-                    r = await client.get(f"{API_BASE_URL}/pedidos", timeout=5)
+                    r = await client.get(f"{API_URL}/pedidos", timeout=5)
                     if r.status_code == 200:
                         state.pedidos = r.json()
                         render()
-            except:
-                pass
-
+            except Exception as e:
+                print("Error poll pantalla:", e)
             try:
                 await asyncio.sleep(POLL_SECONDS)
             except:
                 control_flag[0] = False
 
-    poll_task = page.run_task(poll)
+    page.run_task(poll)
     page.views[-1].on_dispose = lambda e: control_flag.__setitem__(0, False)
-
 
 # --- MAIN ---
 def main(page: ft.Page):
@@ -1737,7 +1770,7 @@ def main(page: ft.Page):
     page.horizontal_alignment = "start"
     page.assets_dir = "assets"
 
-    # Servicio de sincronización offline
+    # servicio background que sincroniza pedidos offline
     page.run_task(sync_offline_orders, page)
 
     def route_change(route):
@@ -1763,14 +1796,9 @@ def main(page: ft.Page):
     page.on_view_pop = view_pop
     page.go(page.route)
 
-
 if __name__ == "__main__":
-    # Para Render: usa el puerto que la plataforma inyecta en la variable de entorno PORT
-    port = int(os.getenv("PORT", "8000"))
     ft.app(
         target=main,
         view=ft.AppView.WEB_BROWSER,
         assets_dir="assets",
-        port=port,
-        host="0.0.0.0",
     )
