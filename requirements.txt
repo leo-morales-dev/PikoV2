@@ -1,7 +1,8 @@
-flet
+flet==0.28.3
+flet-desktop==0.28.3
 fastapi
 uvicorn
 httpx
 requests
 plyer
-pydantic    
+pydantic
